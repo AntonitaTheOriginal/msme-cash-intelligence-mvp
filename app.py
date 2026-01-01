@@ -47,26 +47,23 @@ if uploaded_file:
         highest_expense_amount = df["debit"].max()
         cash_volatility = df["net_daily"].std()
 
-        # ------------------ DISPLAY: OVERVIEW ------------------
+        # ------------------ DISPLAY ------------------
         st.subheader("📊 Cash Overview")
         col1, col2, col3 = st.columns(3)
         col1.metric("Total Inflow", f"₹{total_in:,.0f}")
         col2.metric("Total Outflow", f"₹{total_out:,.0f}")
         col3.metric("Net Cash", f"₹{net_cash:,.0f}")
 
-        # ------------------ DAILY AVERAGES ------------------
         st.subheader("📈 Daily Averages")
         col4, col5 = st.columns(2)
         col4.metric("Avg Daily Inflow", f"₹{avg_daily_in:,.0f}")
         col5.metric("Avg Daily Outflow", f"₹{avg_daily_out:,.0f}")
 
-        # ------------------ CASH SURVIVAL ------------------
         st.subheader("🔥 Cash Survival")
         col6, col7 = st.columns(2)
         col6.metric("Burn Rate (₹/day)", f"₹{burn_rate:,.0f}")
         col7.metric("Cash Survival Days", f"{survival_days:.1f} days")
 
-        # ------------------ RISK STATUS ------------------
         st.subheader("🚨 Risk Indicators")
         if low_balance_days > 5 or negative_days > 7:
             st.error("🔴 HIGH CASH STRESS")
@@ -76,7 +73,6 @@ if uploaded_file:
         st.write(f"Low balance days: {low_balance_days}")
         st.write(f"Negative cash days: {negative_days}")
 
-        # ------------------ KEY INSIGHTS ------------------
         st.subheader("🔍 Key Insights")
         st.write(
             f"📅 Highest expense day: **{highest_expense_day}** "
@@ -88,15 +84,11 @@ if uploaded_file:
         else:
             st.success("✅ Cash flow is relatively stable")
 
-        # ==================================================
-        # 1️⃣ CASH FLOW LINE CHART
-        # ==================================================
+        # ------------------ CASH FLOW LINE CHART ------------------
         st.subheader("📉 Cash Balance Trend")
         st.line_chart(df.set_index("date")[["balance"]])
 
-        # ==================================================
-        # 2️⃣ EXPENSE CATEGORY SPLIT
-        # ==================================================
+        # ------------------ EXPENSE CATEGORY SPLIT ------------------
         st.subheader("📊 Expense Category Split")
 
         if "description" not in df.columns:
@@ -108,7 +100,7 @@ if uploaded_file:
                 return "Rent"
             elif "salary" in desc or "wage" in desc:
                 return "Salaries"
-            elif "eb" in desc or "electric" in desc:
+            elif "electric" in desc or "eb" in desc:
                 return "Utilities"
             elif "purchase" in desc or "stock" in desc:
                 return "Inventory"
@@ -116,20 +108,64 @@ if uploaded_file:
                 return "Others"
 
         df["category"] = df["description"].apply(categorize)
-
-        expense_summary = df.groupby("category")["debit"].sum().sort_values(ascending=False)
+        expense_summary = df.groupby("category")["debit"].sum()
         st.bar_chart(expense_summary)
 
-        # ==================================================
-        # 3️⃣ CASH STRESS CALENDAR
-        # ==================================================
+        # ------------------ CASH STRESS CALENDAR ------------------
         st.subheader("📆 Cash Stress Calendar")
         df["stress"] = df["balance"] < threshold
         st.dataframe(df[["date", "balance", "stress"]])
 
         # ==================================================
-        # 4️⃣ PDF MONTHLY REPORT
+        # 📦 PRODUCT PROFIT INTELLIGENCE (NEW)
         # ==================================================
+        st.divider()
+        st.header("📦 Product Profit Intelligence")
+
+        product_data = {
+            "product": ["Product A", "Product B", "Product C", "Product D"],
+            "selling_price": [120, 90, 60, 40],
+            "cost_price": [70, 55, 40, 30],
+            "quantity": [1200, 1500, 2000, 2500]
+        }
+
+        prod_df = pd.DataFrame(product_data)
+
+        prod_df["profit_per_unit"] = prod_df["selling_price"] - prod_df["cost_price"]
+        prod_df["product_profit"] = prod_df["profit_per_unit"] * prod_df["quantity"]
+
+        total_profit = prod_df["product_profit"].sum()
+        prod_df["contribution_percent"] = (prod_df["product_profit"] / total_profit) * 100
+
+        st.subheader("📊 Profit Contribution by Product (%)")
+        st.bar_chart(prod_df.set_index("product")["contribution_percent"])
+
+        # ------------------ MARGIN DROP SIMULATION ------------------
+        st.subheader("📉 Margin Drop Impact Simulation")
+
+        margin_drop = st.slider(
+            "Simulate margin drop (%)",
+            min_value=0,
+            max_value=30,
+            value=10
+        ) / 100
+
+        prod_df["new_selling_price"] = prod_df["selling_price"] * (1 - margin_drop)
+        prod_df["new_profit_per_unit"] = prod_df["new_selling_price"] - prod_df["cost_price"]
+        prod_df["new_product_profit"] = prod_df["new_profit_per_unit"] * prod_df["quantity"]
+
+        prod_df["profit_loss"] = prod_df["product_profit"] - prod_df["new_product_profit"]
+
+        st.bar_chart(prod_df.set_index("product")["profit_loss"])
+
+        most_sensitive = prod_df.loc[prod_df["profit_loss"].idxmax(), "product"]
+
+        st.info(
+            f"🔴 **{most_sensitive}** is the most margin-sensitive product. "
+            "Price reductions here will impact overall company profit the most."
+        )
+
+        # ------------------ PDF REPORT ------------------
         st.subheader("🧾 Download Monthly Report")
 
         if st.button("Generate PDF Report"):
@@ -142,10 +178,9 @@ if uploaded_file:
             text.textLine(f"Total Inflow: ₹{total_in:,.0f}")
             text.textLine(f"Total Outflow: ₹{total_out:,.0f}")
             text.textLine(f"Net Cash: ₹{net_cash:,.0f}")
-            text.textLine(f"Avg Daily Outflow: ₹{avg_daily_out:,.0f}")
+            text.textLine(f"Burn Rate: ₹{burn_rate:,.0f} / day")
             text.textLine(f"Cash Survival Days: {survival_days:.1f}")
             text.textLine(f"Low Balance Days: {low_balance_days}")
-            text.textLine(f"Negative Cash Days: {negative_days}")
 
             c.drawText(text)
             c.showPage()
